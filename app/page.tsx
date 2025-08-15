@@ -16,8 +16,8 @@ import { cn } from "@/lib/utils"
 type User = "Amit" | "Ori"
 
 const CODES_TO_USER: Record<string, User> = {
-  "8237592": "Amit",
-  "1491023": "Ori",
+  "1": "Amit",
+  "2": "Ori",
 }
 const OTHER: Record<User, User> = { Amit: "Ori", Ori: "Amit" }
 
@@ -350,7 +350,7 @@ export default function Page() {
                       onChange={(e) => setCode(e.target.value)}
                     />
                     <div className="flex items-center gap-1 text-xs text-zinc-500">
-                      <span>{"Use 8237592 (Amit) or 1491023 (Ori)"}</span>
+                      <span>{"Ask Amit for the code..."}</span>
                     </div>
                   </div>
                   <Button type="submit" className="w-full bg-purple-600 hover:bg-purple-500 text-white border-0">
