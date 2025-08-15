@@ -4,7 +4,7 @@
 @custom-variant dark (&:is(.dark *));
 
 html, body {
-  @apply bg-black h-full m-0 p-0;
+  @apply bg-[#0a0a0a] h-full m-0 p-0;
 }
 
 :root {
