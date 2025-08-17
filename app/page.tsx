@@ -10,16 +10,16 @@ import { Label } from "@/components/ui/label"
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet"
 import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
-import { Fuel, Settings, History, Undo2, LogOut, Send } from "lucide-react"
+import { Fuel, Settings, History, Undo2, LogOut, Send, Loader2 } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { loadAppState, addMileageEntry, undoLastEntry, resetAndGetMessage, updateSettings } from "./actions"
 
 type User = "Amit" | "Ori"
 
 const CODES_TO_USER: Record<string, User> = {
-  "1": "Amit",
-  "2": "Ori",
+  "8237592": "Amit",
+  "1491023": "Ori",
 }
-const OTHER: Record<User, User> = { Amit: "Ori", Ori: "Amit" }
 
 type Entry = {
   id: string
@@ -48,12 +48,7 @@ type AppState = {
   lastEnteredBy: User | null
 }
 
-const STORAGE_KEY = "fuel-split-state-v1"
 const SESSION_KEY = "fuel-split-session-user"
-
-function nowId() {
-  return `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
-}
 
 function formatCurrency(n: number) {
   try {
@@ -66,70 +61,62 @@ function formatCurrency(n: number) {
 export default function Page() {
   // Session
   const [sessionUser, setSessionUser] = useState<User | null>(null)
+  const [state, setState] = useState<AppState | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+
   useEffect(() => {
     if (typeof window === "undefined") return
     const saved = window.localStorage.getItem(SESSION_KEY)
     if (saved) setSessionUser(saved as User)
   }, [])
 
-  // App State
-  const [state, setState] = useState<AppState>(() => {
-    if (typeof window === "undefined") {
-      return {
-        version: 1,
-        pricePerKm: 0.5,
-        startingOdometer: 0,
-        lastOdometer: null,
-        kmBy: { Amit: 0, Ori: 0 },
-        history: [],
-        lastEnteredBy: null,
-      }
-    }
-    const saved = window.localStorage.getItem(STORAGE_KEY)
-    if (saved) {
-      try {
-        return JSON.parse(saved) as AppState
-      } catch {
-        // fallthrough
-      }
-    }
-    return {
-      version: 1,
-      pricePerKm: 0.5,
-      startingOdometer: 0,
-      lastOdometer: null,
-      kmBy: { Amit: 0, Ori: 0 },
-      history: [],
-      lastEnteredBy: null,
-    }
-  })
-
+  // Load state from database
   useEffect(() => {
-    if (typeof window === "undefined") return
-    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(state))
-  }, [state])
+    async function loadState() {
+      try {
+        setLoading(true)
+        const appState = await loadAppState()
+        setState(appState)
+        setError(null)
+      } catch (err) {
+        console.error("Failed to load state:", err)
+        setError("Failed to load data. Please try again.")
+      } finally {
+        setLoading(false)
+      }
+    }
 
-  // Derived
-  const totalKm = state.kmBy.Amit + state.kmBy.Ori
-  const totalAmount = totalKm * state.pricePerKm
-  const amounts = {
-    Amit: state.kmBy.Amit * state.pricePerKm,
-    Ori: state.kmBy.Ori * state.pricePerKm,
-  }
+    if (sessionUser) {
+      loadState()
+    }
+  }, [sessionUser])
+
+  // Derived values
+  const totalKm = state ? state.kmBy.Amit + state.kmBy.Ori : 0
+  const totalAmount = state ? totalKm * state.pricePerKm : 0
+  const amounts = state
+    ? {
+        Amit: state.kmBy.Amit * state.pricePerKm,
+        Ori: state.kmBy.Ori * state.pricePerKm,
+      }
+    : { Amit: 0, Ori: 0 }
 
   // UI State
   const [code, setCode] = useState("")
   const [mileageValue, setMileageValue] = useState<string>("")
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [historyOpen, setHistoryOpen] = useState(false)
+  const [actionLoading, setActionLoading] = useState(false)
 
   // Undo stack (only last mileage entry)
   const lastEntry = useMemo(() => {
+    if (!state) return null
     for (let i = state.history.length - 1; i >= 0; i--) {
       if (state.history[i].type === "entry") return state.history[i]
     }
     return null
-  }, [state.history])
+  }, [state])
 
   function handleLogin(e: React.FormEvent) {
     e.preventDefault()
@@ -144,106 +131,42 @@ export default function Page() {
 
   function logout() {
     setSessionUser(null)
+    setState(null)
     if (typeof window !== "undefined") window.localStorage.removeItem(SESSION_KEY)
   }
 
-  function addMileage() {
-    if (!sessionUser) return
+  async function addMileage() {
+    if (!sessionUser || !state) return
     const reading = Number(mileageValue)
     if (!Number.isFinite(reading) || reading < 0) {
       alert("Please enter a valid mileage (km).")
       return
     }
-    setState((prev) => {
-      // first ever reading
-      if (prev.lastOdometer === null) {
-        const entry: Entry = {
-          id: nowId(),
-          type: "init",
-          timestamp: Date.now(),
-          reading,
-          enteredBy: sessionUser,
-          note: "Initial reading set",
-        }
-        return {
-          ...prev,
-          startingOdometer: reading,
-          lastOdometer: reading,
-          lastEnteredBy: sessionUser,
-          history: [...prev.history, entry],
-        }
-      }
-      // normal entry
-      const delta = reading - prev.lastOdometer
-      if (delta < 0) {
-        alert("Mileage cannot decrease. Please check the value.")
-        return prev
-      }
-      if (delta === 0) {
-        const entry: Entry = {
-          id: nowId(),
-          type: "entry",
-          timestamp: Date.now(),
-          reading,
-          deltaKm: 0,
-          attributedTo: OTHER[sessionUser],
-          enteredBy: sessionUser,
-          note: "No change in km",
-        }
-        return {
-          ...prev,
-          lastOdometer: reading,
-          lastEnteredBy: sessionUser,
-          history: [...prev.history, entry],
-        }
-      }
-      const creditedUser = OTHER[sessionUser]
-      const entry: Entry = {
-        id: nowId(),
-        type: "entry",
-        timestamp: Date.now(),
-        reading,
-        deltaKm: delta,
-        attributedTo: creditedUser,
-        enteredBy: sessionUser,
-      }
-      return {
-        ...prev,
-        kmBy: { ...prev.kmBy, [creditedUser]: prev.kmBy[creditedUser] + delta },
-        lastOdometer: reading,
-        lastEnteredBy: sessionUser,
-        history: [...prev.history, entry],
-      }
-    })
-    setMileageValue("")
+
+    try {
+      setActionLoading(true)
+      const newState = await addMileageEntry(sessionUser, reading, state)
+      setState(newState)
+      setMileageValue("")
+    } catch (err: any) {
+      alert(err.message || "Failed to add mileage. Please try again.")
+    } finally {
+      setActionLoading(false)
+    }
   }
 
-  function undoLast() {
-    if (!lastEntry) return
-    setState((prev) => {
-      const idx = prev.history.findIndex((e) => e.id === lastEntry.id)
-      if (idx === -1) return prev
-      const newHistory = prev.history.slice(0, idx).concat(prev.history.slice(idx + 1))
-      // find prior reading to restore lastOdometer
-      let restoreTo: number | null = null
-      for (let i = newHistory.length - 1; i >= 0; i--) {
-        const e = newHistory[i]
-        if (e.reading != null) {
-          restoreTo = e.reading
-          break
-        }
-      }
-      const newKmBy = { ...prev.kmBy }
-      if ((lastEntry.deltaKm ?? 0) > 0 && lastEntry.attributedTo) {
-        newKmBy[lastEntry.attributedTo] = Math.max(0, newKmBy[lastEntry.attributedTo] - (lastEntry.deltaKm ?? 0))
-      }
-      return {
-        ...prev,
-        kmBy: newKmBy,
-        lastOdometer: restoreTo,
-        history: newHistory,
-      }
-    })
+  async function undoLast() {
+    if (!lastEntry || !state) return
+
+    try {
+      setActionLoading(true)
+      const newState = await undoLastEntry(state)
+      setState(newState)
+    } catch (err: any) {
+      alert(err.message || "Failed to undo. Please try again.")
+    } finally {
+      setActionLoading(false)
+    }
   }
 
   function openWhatsAppWithMessage(msg: string) {
@@ -251,74 +174,47 @@ export default function Page() {
     window.open(url, "_blank")
   }
 
-  function doResetAndShare() {
-    const ts = Date.now()
-    const dateStr = new Date(ts).toLocaleString()
-    const msg = [
-      `Fuel split reset (${dateStr})`,
-      `Price per km: ${formatCurrency(state.pricePerKm)}`,
-      `Totals since last reset:`,
-      `- Amit: ${state.kmBy.Amit} km => ${formatCurrency(amounts.Amit)}`,
-      `- Ori: ${state.kmBy.Ori} km => ${formatCurrency(amounts.Ori)}`,
-      `Total: ${totalKm} km => ${formatCurrency(totalAmount)}`,
-      state.lastOdometer != null ? `Odometer: ${state.lastOdometer} km` : undefined,
-      `Please settle accordingly.`,
-    ]
-      .filter(Boolean)
-      .join("\n")
+  async function doResetAndShare() {
+    if (!state) return
 
-    // Open Whatsapp
-    openWhatsAppWithMessage(msg)
-
-    // Record reset
-    setState((prev) => {
-      const entry: Entry = {
-        id: nowId(),
-        type: "reset",
-        timestamp: ts,
-        note: "Reset & share",
-        snapshot: {
-          kmBy: { ...prev.kmBy },
-          pricePerKm: prev.pricePerKm,
-          totalKm: prev.kmBy.Amit + prev.kmBy.Ori,
-          totalAmount: (prev.kmBy.Amit + prev.kmBy.Ori) * prev.pricePerKm,
-        },
-      }
-      return {
-        ...prev,
-        startingOdometer: prev.lastOdometer ?? prev.startingOdometer,
-        kmBy: { Amit: 0, Ori: 0 },
-        history: [...prev.history, entry],
-      }
-    })
+    try {
+      setActionLoading(true)
+      const { message, newState } = await resetAndGetMessage(state)
+      setState(newState)
+      openWhatsAppWithMessage(message)
+    } catch (err: any) {
+      alert(err.message || "Failed to reset. Please try again.")
+    } finally {
+      setActionLoading(false)
+    }
   }
 
-  function saveSettings(newPricePerKm: number, newStartingOdo: number) {
-    if (newPricePerKm <= 0) {
-      alert("Price per km must be greater than 0.")
-      return
+  async function saveSettings(newPricePerKm: number, newStartingOdo: number) {
+    if (!state) return
+
+    try {
+      setActionLoading(true)
+      const newState = await updateSettings(newPricePerKm, newStartingOdo, state)
+      setState(newState)
+      setSettingsOpen(false)
+    } catch (err: any) {
+      alert(err.message || "Failed to save settings. Please try again.")
+    } finally {
+      setActionLoading(false)
     }
-    if (newStartingOdo < 0) {
-      alert("Starting mileage must be >= 0.")
-      return
-    }
-    setState((prev) => ({
-      ...prev,
-      pricePerKm: newPricePerKm,
-      startingOdometer: prev.lastOdometer == null ? newStartingOdo : prev.startingOdometer,
-    }))
-    setSettingsOpen(false)
   }
 
   // Forms controlled state for settings
   const [priceInput, setPriceInput] = useState<string>("")
   const [startOdoInput, setStartOdoInput] = useState<string>("")
   useEffect(() => {
-    setPriceInput(String(state.pricePerKm))
-    setStartOdoInput(String(state.startingOdometer))
-  }, [settingsOpen, state.pricePerKm, state.startingOdometer])
+    if (state) {
+      setPriceInput(String(state.pricePerKm))
+      setStartOdoInput(String(state.startingOdometer))
+    }
+  }, [settingsOpen, state])
 
-  // Dark mode wrapper for entire page
+  // Loading or error states
   if (!sessionUser) {
     return (
       <div className="dark">
@@ -350,13 +246,48 @@ export default function Page() {
                       onChange={(e) => setCode(e.target.value)}
                     />
                     <div className="flex items-center gap-1 text-xs text-zinc-500">
-                      <span>{"Ask Amit for the code..."}</span>
+                      <span>{"Use 8237592 (Amit) or 1491023 (Ori)"}</span>
                     </div>
                   </div>
                   <Button type="submit" className="w-full bg-purple-600 hover:bg-purple-500 text-white border-0">
                     Enter
                   </Button>
                 </form>
+              </CardContent>
+            </Card>
+          </div>
+        </main>
+      </div>
+    )
+  }
+
+  if (loading) {
+    return (
+      <div className="dark">
+        <main className="min-h-screen bg-zinc-950 text-zinc-50 flex items-center justify-center">
+          <div className="flex items-center gap-2">
+            <Loader2 className="h-5 w-5 animate-spin text-purple-400" />
+            <span className="text-zinc-300">Loading...</span>
+          </div>
+        </main>
+      </div>
+    )
+  }
+
+  if (error || !state) {
+    return (
+      <div className="dark">
+        <main className="min-h-screen bg-zinc-950 text-zinc-50 flex items-center justify-center">
+          <div className="mx-auto max-w-sm p-4">
+            <Card className="shadow-sm bg-zinc-900 border-zinc-800">
+              <CardContent className="pt-6 text-center">
+                <p className="text-zinc-300 mb-4">{error || "Failed to load data"}</p>
+                <Button
+                  onClick={() => window.location.reload()}
+                  className="bg-purple-600 hover:bg-purple-500 text-white border-0"
+                >
+                  Try Again
+                </Button>
               </CardContent>
             </Card>
           </div>
@@ -536,14 +467,16 @@ export default function Page() {
                         variant="secondary"
                         className="flex-1 bg-zinc-800 text-zinc-100 border-0 hover:bg-zinc-700"
                         onClick={() => setSettingsOpen(false)}
+                        disabled={actionLoading}
                       >
                         Close
                       </Button>
                       <Button
                         className="flex-1 bg-purple-600 hover:bg-purple-500 text-white border-0"
                         onClick={() => saveSettings(Number(priceInput), Number(startOdoInput))}
+                        disabled={actionLoading}
                       >
-                        Save
+                        {actionLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : "Save"}
                       </Button>
                     </div>
                   </div>
@@ -569,13 +502,13 @@ export default function Page() {
           {/* Summary with bigger numbers, less text */}
           <Card className="bg-zinc-900 border-zinc-800 shadow-sm">
             <CardContent className="grid gap-4">
-            <div className="flex flex-col items-center pt-2">
-              <div className="text-6xl font-extrabold tracking-tight text-zinc-50">{formatCurrency(totalAmount)}</div>
-              <div className="flex items-center gap-4 text-sm">
-                <span className="text-zinc-400">{totalKm} km</span>
-                <span className="text-zinc-600">•</span>
-                <span className="text-zinc-400">{formatCurrency(state.pricePerKm)} / km</span>
-              </div>
+              <div className="flex flex-col items-center pt-2">
+                <div className="text-6xl font-extrabold tracking-tight text-zinc-50">{formatCurrency(totalAmount)}</div>
+                <div className="flex items-center gap-4 text-sm">
+                  <span className="text-zinc-400">{totalKm} km</span>
+                  <span className="text-zinc-600">•</span>
+                  <span className="text-zinc-400">{formatCurrency(state.pricePerKm)} / km</span>
+                </div>
               </div>
               <div className="grid gap-2">
                 <div
@@ -642,32 +575,39 @@ export default function Page() {
                     onChange={(e) => setMileageValue(e.target.value)}
                     placeholder={state.lastOdometer === null ? "e.g. 1000 (initial)" : `Last: ${state.lastOdometer} km`}
                     className="bg-zinc-800 border-zinc-700 text-zinc-100 placeholder:text-zinc-500"
+                    disabled={actionLoading}
                   />
                 </div>
                 <Button
                   variant="ghost"
                   size="icon"
                   onClick={undoLast}
-                  disabled={!lastEntry}
+                  disabled={!lastEntry || actionLoading}
                   className={cn(
                     "shrink-0",
                     "text-zinc-300 hover:text-zinc-100 hover:bg-zinc-800",
-                    !lastEntry && "opacity-50 cursor-not-allowed",
+                    (!lastEntry || actionLoading) && "opacity-50 cursor-not-allowed",
                   )}
                   aria-label="Undo last"
                   title="Undo last entry"
                 >
-                  <Undo2 className="h-5 w-5" />
+                  {actionLoading ? <Loader2 className="h-5 w-5 animate-spin" /> : <Undo2 className="h-5 w-5" />}
                 </Button>
               </div>
-              <Button onClick={addMileage} className="h-12 bg-purple-600 hover:bg-purple-500 text-white border-0">
+              <Button
+                onClick={addMileage}
+                className="h-12 bg-purple-600 hover:bg-purple-500 text-white border-0"
+                disabled={actionLoading}
+              >
+                {actionLoading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
                 Add mileage
               </Button>
               <Button
                 onClick={doResetAndShare}
                 className="h-12 bg-purple-900 hover:bg-purple-800 text-purple-50 border-0"
+                disabled={actionLoading}
               >
-                <Send className="mr-2 h-5 w-5" />
+                {actionLoading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Send className="mr-2 h-5 w-5" />}
                 Reset & WhatsApp
               </Button>
             </CardContent>

@@ -4,8 +4,8 @@ import { GeistMono } from 'geist/font/mono'
 import './globals.css'
 
 export const metadata: Metadata = {
-  title: 'Shared Fuel',
-  description: 'Created with v0 and amit',
+  title: 'v0 App',
+  description: 'Created with v0',
   generator: 'v0.app',
 }
 
