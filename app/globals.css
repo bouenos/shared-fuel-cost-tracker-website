@@ -1,6 +1,10 @@
 @import 'tailwindcss';
 @import 'tw-animate-css';
 
+html, body {
+  @apply bg-[#09090b] h-full m-0 p-0;
+}
+
 @custom-variant dark (&:is(.dark *));
 
 :root {
