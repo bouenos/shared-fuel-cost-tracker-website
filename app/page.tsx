@@ -2,23 +2,23 @@
 
 import type React from "react"
 
-import { useEffect, useMemo, useState } from "react"
+import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet"
-import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
-import { Fuel, Settings, History, Undo2, LogOut, Send, Loader2 } from "lucide-react"
+import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet"
 import { cn } from "@/lib/utils"
-import { loadAppState, addMileageEntry, undoLastEntry, resetAndGetMessage, updateSettings } from "./actions"
+import { Fuel, History, Loader2, LogOut, Send, Settings, Undo2 } from "lucide-react"
+import { useEffect, useMemo, useState } from "react"
+import { addMileageEntry, loadAppState, resetAndGetMessage, undoLastEntry, updateSettings } from "./actions"
 
 type User = "Amit" | "Ori"
 
 const CODES_TO_USER: Record<string, User> = {
-  "8237592": "Amit",
-  "1491023": "Ori",
+  "1": "Amit",
+  "2": "Ori",
 }
 
 type Entry = {
@@ -246,7 +246,7 @@ export default function Page() {
                       onChange={(e) => setCode(e.target.value)}
                     />
                     <div className="flex items-center gap-1 text-xs text-zinc-500">
-                      <span>{"Use 8237592 (Amit) or 1491023 (Ori)"}</span>
+                      <span>{"Ask Amit for the code."}</span>
                     </div>
                   </div>
                   <Button type="submit" className="w-full bg-purple-600 hover:bg-purple-500 text-white border-0">
