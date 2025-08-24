@@ -1,5 +1,5 @@
 # 🚗💸 Fuel Splitter
-*A tiny mobile-first website to stop fighting with my sister about gas money*  
+*A tiny mobile-first website to stop fighting with my brother about gas money*  
 
 [![Next.js](https://img.shields.io/badge/Next.js-000000?logo=next.js&logoColor=white)](https://nextjs.org/)
 [![TailwindCSS](https://img.shields.io/badge/TailwindCSS-38B2AC?logo=tailwind-css&logoColor=white)](https://tailwindcss.com/)
