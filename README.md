@@ -3,8 +3,6 @@
 
 [![Next.js](https://img.shields.io/badge/Next.js-000000?logo=next.js&logoColor=white)](https://nextjs.org/)
 [![TailwindCSS](https://img.shields.io/badge/TailwindCSS-38B2AC?logo=tailwind-css&logoColor=white)](https://tailwindcss.com/)
-[![Clerk](https://img.shields.io/badge/Auth-Clerk-orange)](https://clerk.com/)
-[![Prisma](https://img.shields.io/badge/ORM-Prisma-2D3748?logo=prisma&logoColor=white)](https://prisma.io/)
 [![PostgreSQL](https://img.shields.io/badge/Database-PostgreSQL-336791?logo=postgresql&logoColor=white)](https://www.postgresql.org/)
 
 ---
@@ -60,17 +58,6 @@ Cycle continues happily ever after 🎉.
 
 ---
 
-## 🛠 Tech Stack  
-This project is built with:  
-- ⚡ [Next.js](https://nextjs.org/) (App Router)  
-- 🎨 [Tailwind CSS](https://tailwindcss.com/)  
-- 🔐 [Clerk](https://clerk.com/) for authentication  
-- 🗄 [Prisma](https://www.prisma.io/) + [PostgreSQL](https://neon.tech/)  
-
-👉 You can check out the repo for details: [shared-fuel-cost-tracker-website](https://github.com/bouenos/shared-fuel-cost-tracker-website)  
-
----
-
 ## 🧑‍🏫 How to Use  
 1. Clone the repo:  
    ```bash
@@ -101,3 +88,7 @@ Now, math + website = **peace ✌️**.
 ## 🔮 Future ideas  
 - 📊 Add cool charts for who drives more  
 - 💬 Automatic WhatsApp API instead of manual copy-paste   
+
+## 😐 Note
+This code was made by v0.app.
+Sorry in advance for the hardcoded names and ugly code ;)
