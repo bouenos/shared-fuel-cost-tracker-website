@@ -27,7 +27,7 @@ export async function removeEntry(entryId: string): Promise<void> {
 }
 
 export async function addMileageEntry(sessionUser: User, reading: number, currentState: AppState): Promise<AppState> {
-  const OTHER: Record<User, User> = { Amit: "Ori", Ori: "Amit" }
+  const OTHER: Record<User, User> = { Amit: "John", John: "Amit" }
 
   function nowId() {
     return `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
@@ -160,11 +160,11 @@ export async function resetAndGetMessage(currentState: AppState): Promise<{ mess
     }
   }
 
-  const totalKm = currentState.kmBy.Amit + currentState.kmBy.Ori
+  const totalKm = currentState.kmBy.Amit + currentState.kmBy.John
   const totalAmount = totalKm * currentState.pricePerKm
   const amounts = {
     Amit: currentState.kmBy.Amit * currentState.pricePerKm,
-    Ori: currentState.kmBy.Ori * currentState.pricePerKm,
+    John: currentState.kmBy.John * currentState.pricePerKm,
   }
 
   const ts = Date.now()
@@ -174,7 +174,7 @@ export async function resetAndGetMessage(currentState: AppState): Promise<{ mess
     `Price per km: ${formatCurrency(currentState.pricePerKm)}`,
     `Totals since last reset:`,
     `- Amit: ${currentState.kmBy.Amit} km => ${formatCurrency(amounts.Amit)}`,
-    `- Ori: ${currentState.kmBy.Ori} km => ${formatCurrency(amounts.Ori)}`,
+    `- John: ${currentState.kmBy.John} km => ${formatCurrency(amounts.John)}`,
     `Total: ${totalKm} km => ${formatCurrency(totalAmount)}`,
     currentState.lastOdometer != null ? `Odometer: ${currentState.lastOdometer} km` : undefined,
     `Please settle accordingly.`,
@@ -199,7 +199,7 @@ export async function resetAndGetMessage(currentState: AppState): Promise<{ mess
   const newState = {
     ...currentState,
     startingOdometer: currentState.lastOdometer ?? currentState.startingOdometer,
-    kmBy: { Amit: 0, Ori: 0 },
+    kmBy: { Amit: 0, John: 0 },
     history: [...currentState.history, resetEntry],
   }
 

@@ -2,7 +2,7 @@ import { neon } from "@neondatabase/serverless"
 
 const sql = neon(process.env.DATABASE_URL!)
 
-export type User = "Amit" | "Ori"
+export type User = "Amit" | "John"
 
 export type Entry = {
   id: string
@@ -36,7 +36,7 @@ export async function getAppState(): Promise<AppState> {
     // Get current state
     const stateResult = await sql`
       SELECT version, price_per_km, starting_odometer, last_odometer, 
-             amit_km, ori_km, last_entered_by
+             amit_km, john_km, last_entered_by
       FROM fuel_split_state 
       ORDER BY updated_at DESC 
       LIMIT 1
@@ -74,7 +74,7 @@ export async function getAppState(): Promise<AppState> {
       lastOdometer: state.last_odometer,
       kmBy: {
         Amit: state.amit_km,
-        Ori: state.ori_km,
+        John: state.john_km,
       },
       history,
       lastEnteredBy: state.last_entered_by as User | null,
@@ -95,7 +95,7 @@ export async function updateAppState(newState: AppState): Promise<void> {
           starting_odometer = ${newState.startingOdometer},
           last_odometer = ${newState.lastOdometer},
           amit_km = ${newState.kmBy.Amit},
-          ori_km = ${newState.kmBy.Ori},
+          john_km = ${newState.kmBy.John},
           last_entered_by = ${newState.lastEnteredBy},
           updated_at = NOW()
       WHERE id = (SELECT id FROM fuel_split_state ORDER BY updated_at DESC LIMIT 1)

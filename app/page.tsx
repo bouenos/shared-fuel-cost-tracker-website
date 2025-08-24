@@ -14,11 +14,11 @@ import { Fuel, History, Loader2, LogOut, Send, Settings, Undo2 } from "lucide-re
 import { useEffect, useMemo, useState } from "react"
 import { addMileageEntry, loadAppState, resetAndGetMessage, undoLastEntry, updateSettings } from "./actions"
 
-type User = "Amit" | "Ori"
+type User = "Amit" | "John"
 
 const CODES_TO_USER: Record<string, User> = {
-  "1": "Amit",
-  "2": "Ori",
+  "1337": "Amit",
+  "1234": "John",
 }
 
 type Entry = {
@@ -93,14 +93,14 @@ export default function Page() {
   }, [sessionUser])
 
   // Derived values
-  const totalKm = state ? state.kmBy.Amit + state.kmBy.Ori : 0
+  const totalKm = state ? state.kmBy.Amit + state.kmBy.John : 0
   const totalAmount = state ? totalKm * state.pricePerKm : 0
   const amounts = state
     ? {
         Amit: state.kmBy.Amit * state.pricePerKm,
-        Ori: state.kmBy.Ori * state.pricePerKm,
+        John: state.kmBy.John * state.pricePerKm,
       }
-    : { Amit: 0, Ori: 0 }
+    : { Amit: 0, John: 0 }
 
   // UI State
   const [code, setCode] = useState("")
@@ -227,7 +227,7 @@ export default function Page() {
                   <CardTitle className="text-zinc-100">Fuel Split Login</CardTitle>
                 </div>
                 <CardDescription className="text-zinc-400">
-                  Enter your one-time code. Only Amit and Ori can access.
+                  Enter your one-time code. Only Amit and John can access.
                 </CardDescription>
               </CardHeader>
               <CardContent>
@@ -351,11 +351,11 @@ export default function Page() {
                                   </span>
                                 </div>
                                 <div className="flex items-center justify-between">
-                                  <span>Ori</span>
+                                  <span>John</span>
                                   <span>
                                     {e.snapshot
-                                      ? `${e.snapshot.kmBy.Ori} km • ${formatCurrency(
-                                          e.snapshot.kmBy.Ori * e.snapshot.pricePerKm,
+                                      ? `${e.snapshot.kmBy.John} km • ${formatCurrency(
+                                          e.snapshot.kmBy.John * e.snapshot.pricePerKm,
                                         )}`
                                       : "-"}
                                   </span>
@@ -530,17 +530,17 @@ export default function Page() {
                 <div
                   className={cn(
                     "flex items-center justify-between rounded-lg border px-3 py-2 transition-all duration-200",
-                    state.lastEnteredBy === "Ori"
-                      ? sessionUser === "Ori"
+                    state.lastEnteredBy === "John"
+                      ? sessionUser === "John"
                         ? "border-zinc-600 bg-zinc-900 shadow-sm" // Current user - subtle grey/white
                         : "border-purple-500 bg-purple-950/20 shadow-lg shadow-purple-500/20" // Other user - purple glow
                       : "border-zinc-800 bg-zinc-950",
                   )}
                 >
-                  <div className="text-xs text-zinc-400">Ori</div>
+                  <div className="text-xs text-zinc-400">John</div>
                   <div className="text-right">
-                    <div className="text-lg font-semibold text-zinc-100">{formatCurrency(amounts.Ori)}</div>
-                    <div className="text-xs text-zinc-500">{state.kmBy.Ori} km</div>
+                    <div className="text-lg font-semibold text-zinc-100">{formatCurrency(amounts.John)}</div>
+                    <div className="text-xs text-zinc-500">{state.kmBy.John} km</div>
                   </div>
                 </div>
               </div>
